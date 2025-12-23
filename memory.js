@@ -18,7 +18,7 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     
     TASK:
     1. ENTITIES: Return a comma-separated list of ALL people/places involved.
-       - Include the implied subject (e.g. if user says "me", write "Arvin").
+       - Include the implied subject (e.g. if user says "me" or "I' or similar, write "Arvin").
 
     2. TOPICS: Broad categories (Identity, Preference, Location, Relationship, History, Work).
 
@@ -124,4 +124,5 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     return await finalReq.json();
 }
+
 
