@@ -26,7 +26,9 @@ window.PALETTES = {
 
 let USER_API_KEY = localStorage.getItem("symbiosis_api_key") || "";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
-let chatHistory = [];
+
+// --- HISTORY STATE ---
+let chatHistory = []; 
 
 window.triggerError = () => {
     window.currentMood = "WARNING";
@@ -77,6 +79,7 @@ window.saveConfig = function(val, type) {
     window.checkAuth();
 }
 
+// --- UPDATED CHAT HANDLER WITH HISTORY ---
 async function handleChat(userText) {
     if(!USER_API_KEY) return;
     const btn = document.getElementById('sendBtn');
@@ -103,8 +106,6 @@ async function handleChat(userText) {
         if (json.keywords && Array.isArray(json.keywords)) window.updateKeywords(json.keywords);
         if(json.mood && window.MOOD_AUDIO[json.mood]) window.currentMood = json.mood; else window.currentMood = "NEUTRAL";
 
-        // ... (rest of your timing/speaking logic remains the same) ...
-        
         // 1. Define the safety timer
         let safetyTimer = null;
 
@@ -166,4 +167,3 @@ window.onload = () => {
     document.getElementById('wordInput').addEventListener('keypress',e=>{if(e.key==='Enter')window.handleInput()});
 
 };
-
