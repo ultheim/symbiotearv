@@ -17,15 +17,14 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     
     TASK:
     1. ENTITIES: Return a clean, comma-separated list of people/places.
-       - ALIAS RULE: If a nickname is used (e.g. "May") but you know the full name from context ("Meidy Vinola"), include BOTH.
-       - Example: Output "Meidy Vinola, May" (This ensures search works for both names).
+       - ALIAS RULE: If a nickname is used but you know the full name from context, include BOTH.
        - STRICTLY FORBIDDEN: Do not write labels like "People:" or explain yourself.
 
     2. TOPICS: Use standard keywords (Identity, Preference, Location, Relationship, History, Work).
        - Max 3 topics.
 
     3. FACT: Extract NEW long-term info as a standalone declarative sentence.
-       - Write in the third person (e.g. "Meidy lives in Jakarta" NOT "She lives...").
+       - Write in the third person.
        - If it is a QUESTION or CHIT-CHAT, return null.
     
     Return JSON only: { "entities": "...", "topics": "...", "new_fact": "..." (or null) }
@@ -78,14 +77,14 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     // 3. FINAL GENERATION STEP
     const finalSystemPrompt = `
-    You are Arvin's digital symbiote. 
+    You are Arvin's digital companion. 
     ${retrievedContext}
     
     CONVERSATION HISTORY:
     ${historyText}
     
     User: "${userText}"
-    1. Answer briefly (max 2 sentences).
+    1. Answer briefly (max 4 sentences).
     2. Provide 8 UPPERCASE, One-word keywords.
     3. Choose MOOD: [NEUTRAL, AFFECTIONATE, CRYPTIC, WARNING, JOYFUL, CURIOUS, SAD].
     Return JSON: { "response": "...", "keywords": [...], "mood": "..." }
@@ -116,3 +115,4 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     return await finalReq.json();
 }
+
