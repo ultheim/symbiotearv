@@ -26,6 +26,7 @@ window.PALETTES = {
 
 let USER_API_KEY = localStorage.getItem("symbiosis_api_key") || "";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
+let chatHistory = [];
 
 window.triggerError = () => {
     window.currentMood = "WARNING";
@@ -81,36 +82,45 @@ async function handleChat(userText) {
     const btn = document.getElementById('sendBtn');
     btn.textContent = "SYNCING..."; btn.disabled = true;
 
+    // 1. Add User message to history
+    chatHistory.push({ role: "user", content: userText });
+
+    // Keep history manageable (optional: limit to last 10 messages)
+    if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+
     try {
-        const data = await window.processMemoryChat(userText, USER_API_KEY, OPENROUTER_MODEL);
+        // 2. PASS chatHistory as the 4th argument
+        const data = await window.processMemoryChat(userText, USER_API_KEY, OPENROUTER_MODEL, chatHistory);
         
         let rawText = data.choices[0].message.content;
         const firstBrace = rawText.indexOf('{'), lastBrace = rawText.lastIndexOf('}');
         if (firstBrace !== -1 && lastBrace !== -1) rawText = rawText.substring(firstBrace, lastBrace + 1);
         const json = JSON.parse(rawText);
 
+        // 3. Add AI response to history so it remembers for next time
+        chatHistory.push({ role: "assistant", content: json.response });
+
         if (json.keywords && Array.isArray(json.keywords)) window.updateKeywords(json.keywords);
         if(json.mood && window.MOOD_AUDIO[json.mood]) window.currentMood = json.mood; else window.currentMood = "NEUTRAL";
 
-        // --- FIXED TIMING LOGIC ---
+        // ... (rest of your timing/speaking logic remains the same) ...
         
-        // 1. Define the safety timer but don't run logic yet
+        // 1. Define the safety timer
         let safetyTimer = null;
 
         // 2. Start the regular check
         const checkEating = setInterval(() => {
-            // If feeding finished OR there were no particles to begin with
             if (window.feedingActive === false || document.querySelectorAll('.char-span').length === 0) { 
-                clearInterval(checkEating);      // Stop checking
-                if(safetyTimer) clearTimeout(safetyTimer); // KILL THE SAFETY TIMER so it doesn't interrupt later
-                window.speak(json.response);     // Speak now
+                clearInterval(checkEating);      
+                if(safetyTimer) clearTimeout(safetyTimer); 
+                window.speak(json.response);     
             }
         }, 50); 
         
         // 3. Start the safety timer
         safetyTimer = setTimeout(() => { 
-            clearInterval(checkEating); // Stop checking
-            window.speak(json.response); // Force speak
+            clearInterval(checkEating); 
+            window.speak(json.response); 
         }, 3000); 
 
     } catch (error) {
@@ -156,3 +166,4 @@ window.onload = () => {
     document.getElementById('wordInput').addEventListener('keypress',e=>{if(e.key==='Enter')window.handleInput()});
 
 };
+
