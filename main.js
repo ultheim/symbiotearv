@@ -25,7 +25,7 @@ window.PALETTES = {
 };
 
 let USER_API_KEY = localStorage.getItem("symbiosis_api_key") || "";
-const OPENROUTER_MODEL = "x-ai/grok-3-mini";
+const OPENROUTER_MODEL = "google/gemini-2.5-flash";
 
 window.triggerError = () => {
     window.currentMood = "WARNING";
@@ -154,4 +154,5 @@ window.onload = () => {
     window.initSymbiosisAnimation(); 
     window.checkAuth(); 
     document.getElementById('wordInput').addEventListener('keypress',e=>{if(e.key==='Enter')window.handleInput()});
+
 };
