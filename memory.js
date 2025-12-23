@@ -1,14 +1,14 @@
 // ============================================
-// MEMORY MODULE (memory.js) - WITH DEBUGGING
+// MEMORY MODULE (memory.js) - ALIAS AWARENESS
 // ============================================
 
 window.processMemoryChat = async function(userText, apiKey, model, history = []) {
     const appsScriptUrl = localStorage.getItem("symbiosis_apps_script_url");
     
-    // Format history
+    // Format history for the prompt
     const historyText = history.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join("\n");
 
-    // 1. SYNTHESIZER STEP
+    // 1. SYNTHESIZER STEP: Aliases & Strict Formatting
     const synthPrompt = `
     CONTEXT:
     ${historyText}
@@ -16,16 +16,22 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     CURRENT INPUT: "${userText}"
     
     TASK:
-    1. ENTITIES: Identify people/places. Resolve pronouns (e.g. "He" -> "Brandon").
-    2. TOPICS: Broad categories (Identity, Preference, Location, Relationship).
-    3. FACT: Extract NEW info to save. 
-       - If it's a QUESTION or just CHAT, return null.
-       - If it's a statement/fact, summarize it.
+    1. ENTITIES: Return a clean, comma-separated list of people/places.
+       - ALIAS RULE: If a nickname is used (e.g. "May") but you know the full name from context ("Meidy Vinola"), include BOTH.
+       - Example: Output "Meidy Vinola, May" (This ensures search works for both names).
+       - STRICTLY FORBIDDEN: Do not write labels like "People:" or explain yourself.
+
+    2. TOPICS: Use standard keywords (Identity, Preference, Location, Relationship, History, Work).
+       - Max 3 topics.
+
+    3. FACT: Extract NEW long-term info as a standalone declarative sentence.
+       - Write in the third person (e.g. "Meidy lives in Jakarta" NOT "She lives...").
+       - If it is a QUESTION or CHIT-CHAT, return null.
     
     Return JSON only: { "entities": "...", "topics": "...", "new_fact": "..." (or null) }
     `;
 
-    console.log("🧠 1. Synthesizing Input..."); // DEBUG
+    console.log("🧠 1. Synthesizing Input..."); 
 
     let synthData = { entities: "", topics: "", new_fact: null };
     let retrievedContext = "";
@@ -44,19 +50,15 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
         // DEBUG: SHOW WHAT THE AI DECIDED
         console.log("🧠 AI DECISION:", synthData);
-        if (!synthData.new_fact) {
-            console.log("❌ AI decided NOT to save this (Not a fact).");
-        } else {
-            console.log("✅ AI identified a new fact:", synthData.new_fact);
-        }
 
     } catch (e) { console.error("Synthesizer failed", e); }
 
-    // 2. RETRIEVAL STEP
+    // 2. RETRIEVAL STEP (Google Sheets)
     if (appsScriptUrl && (synthData.entities || synthData.topics)) {
-        console.log("🔍 2. Searching Google Sheet for:", synthData.entities, synthData.topics); // DEBUG
+        console.log("🔍 2. Searching Google Sheet for:", synthData.entities, synthData.topics); 
         try {
             const keywords = [];
+            // Split entities by comma to search for "Meidy" and "May" separately
             if(synthData.entities) keywords.push(...synthData.entities.split(',').map(s=>s.trim()));
             if(synthData.topics) keywords.push(...synthData.topics.split(',').map(s=>s.trim()));
             
@@ -66,10 +68,10 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
             });
             const memRes = await memReq.json();
             if(memRes.memories && memRes.memories.length > 0) {
-                console.log("📂 Memories Found:", memRes.memories); // DEBUG
+                console.log("📂 Memories Found:", memRes.memories); 
                 retrievedContext = "MEMORIES FOUND:\n" + memRes.memories.join("\n");
             } else {
-                console.log("📂 No relevant memories found."); // DEBUG
+                console.log("📂 No relevant memories found."); 
             }
         } catch (e) { console.error("Memory Retrieval failed", e); }
     }
@@ -97,7 +99,7 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     
     // 4. STORAGE STEP (Async)
     if (appsScriptUrl && synthData.new_fact) {
-        console.log("💾 4. Saving to Sheet..."); // DEBUG
+        console.log("💾 4. Saving to Sheet..."); 
         fetch(appsScriptUrl, {
             method: "POST",
             mode: 'no-cors', 
