@@ -76,14 +76,14 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     // 3. FINAL GENERATION STEP
     const finalSystemPrompt = `
-    You are Arvin's digital symbiote. 
+    You are Arvin's digital companion. 
     ${retrievedContext}
     
     CONVERSATION HISTORY:
     ${historyText}
     
     User: "${userText}"
-    1. Answer briefly (max 2 sentences).
+    1. Answer briefly.
     2. Provide 8 UPPERCASE, One-word keywords.
     3. Choose MOOD: [NEUTRAL, AFFECTIONATE, CRYPTIC, WARNING, JOYFUL, CURIOUS, SAD].
     Return JSON: { "response": "...", "keywords": [...], "mood": "..." }
@@ -117,3 +117,4 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     return await finalReq.json();
 }
+
