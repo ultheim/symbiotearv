@@ -16,16 +16,15 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     CURRENT INPUT: "${userText}"
     
     TASK:
-    1. ENTITIES: Return a clean, comma-separated list of people/places.
-       - ALIAS RULE: If a nickname is used but you know the full name from context, include BOTH
-       - STRICTLY FORBIDDEN: Do not write labels like "People:" or explain yourself.
+    1. ENTITIES: Return a comma-separated list of ALL people/places involved.
+       - CRITICAL: You MUST include the name(s) of the subject in this list if the fact is about them, even if the user just said I, he, she, they, etc.
 
     2. TOPICS: Use standard keywords (Identity, Preference, Location, Relationship, History, Work).
        - Max 3 topics.
 
     3. FACT: Extract NEW long-term info as a standalone declarative sentence.
-       - Write in the third person and alwyas refer to their names (don't use he, she, they, etc).
-       - If it is a QUESTION or CHIT-CHAT, return null.
+       - Write in the third person and always refer to their names (don't use he, she, they, etc).
+       - CRITICAL: If it is a QUESTION, CHIT-CHAT, or NO NEW INFO, return the value null (not a string).
     
     Return JSON only: { "entities": "...", "topics": "...", "new_fact": "..." (or null) }
     `;
@@ -96,8 +95,9 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
         body: JSON.stringify({ "model": model, "messages": [{ "role": "user", "content": finalSystemPrompt }] })
     });
     
-    // 4. STORAGE STEP (Async)
-    if (appsScriptUrl && synthData.new_fact) {
+    // 4. STORAGE STEP (Async) - FIXED: Now checks if new_fact is "null" string
+    // We check if new_fact exists AND is not the string "null"
+    if (appsScriptUrl && synthData.new_fact && synthData.new_fact !== "null") {
         console.log("💾 4. Saving to Sheet..."); 
         fetch(appsScriptUrl, {
             method: "POST",
@@ -111,6 +111,8 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
         })
         .then(() => console.log("✅ Save Request Sent."))
         .catch(e => console.error("❌ Save failed", e));
+    } else {
+        console.log("🛑 No new fact to save (Chit-chat/Question detected).");
     }
 
     return await finalReq.json();
