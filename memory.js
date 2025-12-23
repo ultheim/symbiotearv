@@ -1,5 +1,5 @@
 // ============================================
-// MEMORY MODULE (memory.js) - ALIAS AWARENESS
+// MEMORY MODULE (memory.js) - IMPROVED SEARCH
 // ============================================
 
 window.processMemoryChat = async function(userText, apiKey, model, history = []) {
@@ -17,21 +17,30 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     
     TASK:
     1. ENTITIES: Return a comma-separated list of ALL people/places involved.
-       - CRITICAL: You MUST include the name(s) of the subject in this list if the fact is about them, even if the user just said I, he, she, they, etc.
+       - Include the implied subject (e.g. if user says "me", write "Arvin").
 
-    2. TOPICS: Use standard keywords (Identity, Preference, Location, Relationship, History, Work).
-       - Max 3 topics.
+    2. TOPICS: Broad categories (Identity, Preference, Location, Relationship, History, Work).
 
-    3. FACT: Extract NEW long-term info as a standalone declarative sentence.
-       - Write in the third person and always refer to their names (don't use he, she, they, etc).
-       - CRITICAL: If it is a QUESTION, CHIT-CHAT, or NO NEW INFO, return the value null (not a string).
+    3. KEYWORDS: Extract 3-5 specific search terms from the input.
+       - If user asks "What is Arvin's MBTI?", keywords must be: "Arvin, MBTI"
+       - If user asks "Where does Meidy work?", keywords must be: "Meidy, Work, Job, Office"
+       - CRITICAL: This is used for database retrieval. Be specific.
+
+    4. FACT: Extract NEW long-term info as a standalone declarative sentence.
+       - Write in the third person.
+       - If it is a QUESTION, CHIT-CHAT, or NO NEW INFO, return null.
     
-    Return JSON only: { "entities": "...", "topics": "...", "new_fact": "..." (or null) }
+    Return JSON only: { 
+        "entities": "...", 
+        "topics": "...", 
+        "search_keywords": "...",  
+        "new_fact": "..." (or null) 
+    }
     `;
 
     console.log("🧠 1. Synthesizing Input..."); 
 
-    let synthData = { entities: "", topics: "", new_fact: null };
+    let synthData = { entities: "", topics: "", search_keywords: "", new_fact: null };
     let retrievedContext = "";
 
     try {
@@ -46,19 +55,17 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
         if (fb !== -1 && lb !== -1) raw = raw.substring(fb, lb + 1);
         synthData = JSON.parse(raw);
 
-        // DEBUG: SHOW WHAT THE AI DECIDED
         console.log("🧠 AI DECISION:", synthData);
 
     } catch (e) { console.error("Synthesizer failed", e); }
 
     // 2. RETRIEVAL STEP (Google Sheets)
-    if (appsScriptUrl && (synthData.entities || synthData.topics)) {
-        console.log("🔍 2. Searching Google Sheet for:", synthData.entities, synthData.topics); 
+    // We now use the SPECIFIC 'search_keywords' generated above
+    if (appsScriptUrl && synthData.search_keywords) {
+        console.log("🔍 2. Searching Google Sheet for:", synthData.search_keywords); 
         try {
-            const keywords = [];
-            // Split entities by comma to search for "Meidy" and "May" separately
-            if(synthData.entities) keywords.push(...synthData.entities.split(',').map(s=>s.trim()));
-            if(synthData.topics) keywords.push(...synthData.topics.split(',').map(s=>s.trim()));
+            // Split by comma and clean up
+            const keywords = synthData.search_keywords.split(',').map(s => s.trim());
             
             const memReq = await fetch(appsScriptUrl, {
                 method: "POST",
@@ -83,7 +90,7 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
     ${historyText}
     
     User: "${userText}"
-    1. Answer briefly.
+    1. Answer briefly based on the MEMORIES FOUND.
     2. Provide 8 UPPERCASE, One-word keywords.
     3. Choose MOOD: [NEUTRAL, AFFECTIONATE, CRYPTIC, WARNING, JOYFUL, CURIOUS, SAD].
     Return JSON: { "response": "...", "keywords": [...], "mood": "..." }
@@ -95,8 +102,7 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
         body: JSON.stringify({ "model": model, "messages": [{ "role": "user", "content": finalSystemPrompt }] })
     });
     
-    // 4. STORAGE STEP (Async) - FIXED: Now checks if new_fact is "null" string
-    // We check if new_fact exists AND is not the string "null"
+    // 4. STORAGE STEP
     if (appsScriptUrl && synthData.new_fact && synthData.new_fact !== "null") {
         console.log("💾 4. Saving to Sheet..."); 
         fetch(appsScriptUrl, {
@@ -112,9 +118,8 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
         .then(() => console.log("✅ Save Request Sent."))
         .catch(e => console.error("❌ Save failed", e));
     } else {
-        console.log("🛑 No new fact to save (Chit-chat/Question detected).");
+        console.log("🛑 No new fact to save.");
     }
 
     return await finalReq.json();
 }
-
