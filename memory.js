@@ -10,6 +10,7 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     // 1. SYNTHESIZER STEP: Aliases & Strict Formatting
     const synthPrompt = `
+    USER_IDENTITY: Arvin, unless said otherwise
     CONTEXT:
     ${historyText}
     
@@ -123,3 +124,4 @@ window.processMemoryChat = async function(userText, apiKey, model, history = [])
 
     return await finalReq.json();
 }
+
