@@ -1,11 +1,11 @@
 // ============================================
-// VISUALS MODULE (visuals.js) - NEURAL MURMURATION
+// VISUALS MODULE (visuals.js) - ADAPTED SWARM
 // ============================================
 
-let foodParticles = [];
+let foodParticles = []; 
 window.feedingActive = false;
-let eatenFoodCount = 0;
 let totalFoodCount = 0;
+let eatenFoodCount = 0;
 let bloatFactor = 1.0; 
 let pulseTime = 0;     
 let digestionGlow = 0; 
@@ -18,151 +18,61 @@ window.updateKeywords = (newList) => {
     if(newList && newList.length > 0) indicesList = newList;
 };
 
-// --- BOID / PARTICLE SYSTEM SETUP ---
-const NUM_BOIDS = 180; // Enough for density, low enough for connection lines
-const VISUAL_RANGE = 120; // How far they see each other
-const CONNECTION_DIST = 90; // When to draw lines (The "Web" look)
-
-// Interaction State
-window.activeChord = [];
-window.currentIntensity = 1.0;
-
-// --- 3D VECTOR CLASS ---
-class Vector3 {
-    constructor(x, y, z) { this.x = x; this.y = y; this.z = z; }
-    add(v) { this.x+=v.x; this.y+=v.y; this.z+=v.z; }
-    sub(v) { this.x-=v.x; this.y-=v.y; this.z-=v.z; }
-    mult(n) { this.x*=n; this.y*=n; this.z*=n; }
-    div(n) { if(n!==0) { this.x/=n; this.y/=n; this.z/=n; } }
-    mag() { return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z); }
-    normalize() { const m = this.mag(); if(m>0) this.div(m); }
-    limit(max) { if(this.mag() > max) { this.normalize(); this.mult(max); } }
-}
-
-class Boid {
-    constructor() {
-        // Start in a random cloud
-        this.pos = new Vector3((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
-        this.vel = new Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
-        this.acc = new Vector3(0,0,0);
-        this.maxSpeed = 5;
-        this.maxForce = 0.15;
-    }
-
-    applyForce(force) {
-        this.acc.add(force);
-    }
-
-    // The "Murmuration" Logic
-    flock(boids, mousePos) {
-        let sep = new Vector3(0,0,0);
-        let ali = new Vector3(0,0,0);
-        let coh = new Vector3(0,0,0);
-        let count = 0;
-
-        for (let other of boids) {
-            if (other === this) continue;
-            let d = Math.sqrt((this.pos.x-other.pos.x)**2 + (this.pos.y-other.pos.y)**2 + (this.pos.z-other.pos.z)**2);
-            
-            if (d < VISUAL_RANGE) {
-                // Separation
-                if (d < 40) {
-                    let diff = new Vector3(this.pos.x - other.pos.x, this.pos.y - other.pos.y, this.pos.z - other.pos.z);
-                    diff.normalize();
-                    diff.div(d); // Weight by distance
-                    sep.add(diff);
-                }
-                // Alignment & Cohesion
-                ali.add(other.vel);
-                coh.add(other.pos);
-                count++;
-            }
-        }
-
-        if (count > 0) {
-            // Alignment
-            ali.div(count);
-            ali.normalize();
-            ali.mult(this.maxSpeed);
-            ali.sub(this.vel);
-            ali.limit(this.maxForce);
-
-            // Cohesion
-            coh.div(count);
-            coh.sub(this.pos); // Steer towards location
-            coh.normalize();
-            coh.mult(this.maxSpeed);
-            coh.sub(this.vel);
-            coh.limit(this.maxForce);
-        }
-        
-        // Separation final math
-        if (sep.mag() > 0) {
-            sep.normalize();
-            sep.mult(this.maxSpeed);
-            sep.sub(this.vel);
-            sep.limit(this.maxForce * 1.5); // Separation is high priority
-        }
-
-        // --- SYMBIOSIS SPECIFIC BEHAVIORS ---
-
-        // 1. Center Pull (Keep them on screen)
-        let centerPull = new Vector3(-this.pos.x, -this.pos.y, -this.pos.z);
-        centerPull.mult(0.005); 
-
-        // 2. Mouse Repulsion (Touch Behavior)
-        let mouseForce = new Vector3(0,0,0);
-        // mousePos is passed as projected 2D coordinates relative to center, but we approximate in 3D
-        if (mousePos.active) {
-            let dx = this.pos.x - mousePos.x; // Very rough approximation since mouse is 2D
-            let dy = this.pos.y - mousePos.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 150) {
-                let rep = new Vector3(dx, dy, 0);
-                rep.normalize();
-                rep.mult(5.0); // Strong push
-                mouseForce.add(rep);
-            }
-        }
-
-        // 3. Mouth/Shape Forming (The "Active Chord")
-        if (window.activeChord && window.activeChord.length > 0) {
-            // Override flocking if we need to form a letter
-            // We assign this boid to a specific target point based on its index
-            let targetIdx = Math.floor(Math.abs(this.pos.x + this.pos.y) % window.activeChord.length);
-            let pt = window.activeChord[targetIdx];
-            
-            // Map 0..1 chord coordinates to -200..200 3D space
-            let tx = (pt.x - 0.5) * 400;
-            let ty = (pt.y - 0.5) * 400;
-            
-            let target = new Vector3(tx, ty, 0);
-            let steer = new Vector3(target.x - this.pos.x, target.y - this.pos.y, target.z - this.pos.z);
-            
-            // Stronger steering for shapes
-            steer.limit(this.maxForce * 4); 
-            this.applyForce(steer);
-            
-            // Reduce flocking chaos when speaking
-            sep.mult(0.2); ali.mult(0.1); coh.mult(0.1); centerPull.mult(0);
-        }
-
-        this.applyForce(sep);
-        this.applyForce(ali);
-        this.applyForce(coh);
-        this.applyForce(centerPull);
-        this.applyForce(mouseForce);
-    }
-
-    update() {
-        this.vel.add(this.acc);
-        this.vel.limit(this.maxSpeed);
-        this.pos.add(this.vel);
-        this.acc.mult(0); // Reset accel
-    }
-}
-
-// --- STANDARD EXPORTS ---
+// ... (Keep existing Alphabet Chords from original code) ...
+const alphabetChords = {
+    'A': [{x:0.5, y:0.2}, {x:0.2, y:0.8}, {x:0.8, y:0.8}],
+    'E': [{x:0.2, y:0.2}, {x:0.2, y:0.8}, {x:0.8, y:0.2}, {x:0.8, y:0.5}, {x:0.8, y:0.8}],
+    'I': [{x:0.5, y:0.2}, {x:0.5, y:0.8}, {x:0.3, y:0.2}, {x:0.7, y:0.2}, {x:0.3, y:0.8}, {x:0.7, y:0.8}],
+    'O': [{x:0.5, y:0.2}, {x:0.2, y:0.5}, {x:0.5, y:0.8}, {x:0.8, y:0.5}],
+    'U': [{x:0.2, y:0.2}, {x:0.2, y:0.8}, {x:0.5, y:0.9}, {x:0.8, y:0.8}, {x:0.8, y:0.2}],
+    'B': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.5,y:0.35},{x:0.5,y:0.65},{x:0.8,y:0.2},{x:0.8,y:0.8}],
+    'C': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.8}],
+    'D': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.5}],
+    'F': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.6,y:0.5}],
+    'G': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.8},{x:0.8,y:0.5},{x:0.6,y:0.5}],
+    'H': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.5}],
+    'J': [{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.9},{x:0.2,y:0.8}],
+    'K': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.2,y:0.5}],
+    'L': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.8}],
+    'M': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.5,y:0.5},{x:0.8,y:0.2},{x:0.8,y:0.8}],
+    'N': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.8},{x:0.8,y:0.2}],
+    'P': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5}],
+    'Q': [{x:0.5,y:0.2},{x:0.2,y:0.5},{x:0.5,y:0.8},{x:0.8,y:0.5},{x:0.8,y:0.8}],
+    'R': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5},{x:0.8,y:0.8}],
+    'S': [{x:0.8,y:0.2},{x:0.2,y:0.25},{x:0.8,y:0.75},{x:0.2,y:0.8}],
+    'T': [{x:0.5,y:0.2},{x:0.5,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2}],
+    'V': [{x:0.2,y:0.2},{x:0.5,y:0.8},{x:0.8,y:0.2}],
+    'W': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.5,y:0.5},{x:0.8,y:0.8},{x:0.8,y:0.2}],
+    'X': [{x:0.2,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.5},{x:0.8,y:0.2},{x:0.2,y:0.8}],
+    'Y': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.5},{x:0.5,y:0.8}],
+    'Z': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.8}],
+    '0': [{x:0.5,y:0.1},{x:0.1,y:0.5},{x:0.5,y:0.9},{x:0.9,y:0.5},{x:0.5,y:0.5}],
+    '1': [{x:0.5,y:0.1},{x:0.5,y:0.9},{x:0.3,y:0.9},{x:0.7,y:0.9}],
+    '2': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8}],
+    '3': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.5},{x:0.8,y:0.8},{x:0.2,y:0.8}],
+    '4': [{x:0.2,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.2},{x:0.8,y:0.8}],
+    '5': [{x:0.8,y:0.2},{x:0.2,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.8},{x:0.2,y:0.8}],
+    '6': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8},{x:0.8,y:0.5}],
+    '7': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.8}],
+    '8': [{x:0.5,y:0.3},{x:0.5,y:0.7},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8}],
+    '9': [{x:0.5,y:0.5},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.8}],
+    '.': [{x:0.5,y:0.8},{x:0.5,y:0.9}],
+    ',': [{x:0.5,y:0.8},{x:0.4,y:0.95}],
+    '!': [{x:0.5,y:0.2},{x:0.5,y:0.6},{x:0.5,y:0.9}],
+    '?': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.5,y:0.6},{x:0.5,y:0.9}],
+    '-': [{x:0.2,y:0.5},{x:0.8,y:0.5}],
+    '_': [{x:0.1,y:0.9},{x:0.9,y:0.9}],
+    ' ': [{x:0.5,y:0.5},{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}],
+    ':': [{x:0.5,y:0.3},{x:0.5,y:0.7}],
+    ';': [{x:0.5,y:0.3},{x:0.5,y:0.7},{x:0.4,y:0.8}],
+    '\'':[{x:0.5,y:0.2},{x:0.5,y:0.3}],
+    '"': [{x:0.4,y:0.2},{x:0.6,y:0.2}],
+    '/': [{x:0.8,y:0.2},{x:0.2,y:0.8}],
+    '\\':[{x:0.2,y:0.2},{x:0.8,y:0.8}],
+    '(': [{x:0.6,y:0.2},{x:0.4,y:0.5},{x:0.6,y:0.8}],
+    ')': [{x:0.4,y:0.2},{x:0.6,y:0.5},{x:0.4,y:0.8}],
+    '@': [{x:0.5,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.2},{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.6,y:0.8}],
+};
 
 window.spawnFoodText = (text) => {
     foodParticles = [];
@@ -178,6 +88,7 @@ window.spawnFoodText = (text) => {
     const canvas = document.getElementById('symbiosisCanvas');
     const width = canvas.width;
     const height = canvas.height;
+
     const startY = height + 50; 
     const spread = Math.min(width * 0.9, chars.length * 40); 
     const startX = (width - spread) / 2;
@@ -231,7 +142,8 @@ window.speak = function(text) {
             if (charIndex >= chars.length) { wordIndex++; setTimeout(playNextWord, 150 * speedMod); return; }
             const char = chars[charIndex].toUpperCase();
             
-            window.activeChord = window.alphabetChords?.[char] || [{x:0.5, y:0.5}];
+            window.activeChord = alphabetChords[char] || [{x:0.5, y:0.5},{x:Math.random(),y:Math.random()}];
+            
             window.morphMouthShape(char);
             window.currentIntensity = 1.5; setTimeout(() => { window.currentIntensity = 1.0; }, 50);
             
@@ -243,8 +155,6 @@ window.speak = function(text) {
     playNextWord();
 };
 
-// --- MAIN ANIMATION LOOP ---
-
 window.initSymbiosisAnimation = function() {
     const canvas = document.getElementById('symbiosisCanvas');
     const container = document.getElementById('symbiosis-container');
@@ -252,7 +162,6 @@ window.initSymbiosisAnimation = function() {
     if (!canvas || !container) return;
     const ctx = canvas.getContext('2d');
     let width, height;
-    
     function resize() {
         const rect = container.getBoundingClientRect();
         width = rect.width; height = rect.height;
@@ -260,28 +169,38 @@ window.initSymbiosisAnimation = function() {
     }
     window.addEventListener('resize', resize); resize();
 
-    // 1. Initialize Boids
-    const boids = [];
-    for(let i=0; i<NUM_BOIDS; i++) {
-        boids.push(new Boid());
+    // 1. REPLACED POINT CLASS WITH FLOCKING PARTICLE
+    class Particle { 
+        constructor(type) { 
+            this.x = (Math.random()-0.5)*100; 
+            this.y = (Math.random()-0.5)*100; 
+            this.z = (Math.random()-0.5)*100; 
+            this.vx = (Math.random()-0.5)*2;
+            this.vy = (Math.random()-0.5)*2;
+            this.vz = (Math.random()-0.5)*2;
+            this.type = type; // "public" or "private"
+        } 
     }
 
-    let rotationX=0, rotationY=0; 
-    let realMouse={x:-1000,y:-1000, active: false};
-
-    // 2. Mouse/Touch Handlers (Preserving original feel)
-    const handleMove = (x, y) => {
-        const r = container.getBoundingClientRect();
-        // Convert screen coord to a centered coord relative to the swarm center
-        // Original swarm center is roughly width/2, height*0.35
-        realMouse.x = (x - r.left) - (width/2); 
-        realMouse.y = (y - r.top) - (height*0.35); 
-        realMouse.active = true;
-    };
+    const numPoints = 180; // Total swarm size
+    const particles = [];
     
-    container.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
-    container.addEventListener('touchmove', e => handleMove(e.touches[0].clientX, e.touches[0].clientY));
-    container.addEventListener('touchend', () => { realMouse.active = false; realMouse.x=-1000; });
+    // Create mix of particles to maintain dual-color aesthetic
+    for(let i=0; i<numPoints; i++) {
+        particles.push(new Particle(i % 2 === 0 ? 'public' : 'private'));
+    }
+    
+    let rotationX=0, rotationY=0, realMouse={x:-1000,y:-1000};
+    window.activeChord = [];
+    window.currentIntensity = 1.0;
+
+    container.addEventListener('mousemove', e => {
+        const r = container.getBoundingClientRect(); realMouse.x=e.clientX-r.left; realMouse.y=e.clientY-r.top;
+    });
+    container.addEventListener('touchmove', e => {
+        const r = container.getBoundingClientRect(); realMouse.x=e.touches[0].clientX-r.left; realMouse.y=e.touches[0].clientY-r.top;
+    });
+    container.addEventListener('touchend', () => { realMouse.x=-1000; realMouse.y=-1000; });
 
     function lerpRGB(curr, target, factor) {
         curr.r += (target.r - curr.r) * factor;
@@ -305,57 +224,167 @@ window.initSymbiosisAnimation = function() {
         lerpRGB(window.curPalette.conn, targetSet.conn, speed);
     }
 
-    // 3D Projection Helper
-    function project(p, cx, cy) {
-        const fov = 400;
+    // 2. NEW FLOCKING LOGIC (Replacing generatePaths)
+    function updateFlocking(time) {
+        const breath = 1 + Math.sin(time * 2) * 0.05;
+        let scale = Math.min(width, height) * 0.35 * breath * bloatFactor;
+        if(bloatFactor > 1.0) bloatFactor -= 0.001;
+        if(digestionGlow > 0) digestionGlow *= 0.92;
+        if(digestionGlow < 0.01) digestionGlow = 0;
+
+        const centerForce = 0.003;
+        const neighborDist = 60;
+        
+        for(let i=0; i<numPoints; i++) {
+            let p = particles[i];
+            
+            // Forces
+            let sepX=0, sepY=0, sepZ=0;
+            let aliX=0, aliY=0, aliZ=0;
+            let cohX=0, cohY=0, cohZ=0;
+            let count = 0;
+
+            // Simple O(N^2) flocking is fine for <200 particles
+            for(let j=0; j<numPoints; j++) {
+                if(i===j) continue;
+                let other = particles[j];
+                let dx = p.x - other.x;
+                let dy = p.y - other.y;
+                let dz = p.z - other.z;
+                let d = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
+                if (d < neighborDist) {
+                    // Separation
+                    sepX += dx / d; sepY += dy / d; sepZ += dz / d;
+                    // Alignment
+                    aliX += other.vx; aliY += other.vy; aliZ += other.vz;
+                    // Cohesion
+                    cohX += other.x; cohY += other.y; cohZ += other.z;
+                    count++;
+                }
+            }
+
+            if(count > 0) {
+                // Cohesion is relative to position
+                cohX = (cohX/count) - p.x;
+                cohY = (cohY/count) - p.y;
+                cohZ = (cohZ/count) - p.z;
+                
+                // Alignment average
+                aliX /= count; aliY /= count; aliZ /= count;
+            }
+
+            // Apply Flocking Rules
+            p.vx += (sepX * 1.5 + aliX * 0.8 + cohX * 0.5) * 0.02;
+            p.vy += (sepY * 1.5 + aliY * 0.8 + cohY * 0.5) * 0.02;
+            p.vz += (sepZ * 1.5 + aliZ * 0.8 + cohZ * 0.5) * 0.02;
+
+            // Global Center Attraction (Keeps the swarm together like the original sphere)
+            p.vx += (-p.x) * centerForce;
+            p.vy += (-p.y) * centerForce;
+            p.vz += (-p.z) * centerForce;
+
+            // 3. TARGETING (Replaces Spring Target)
+            // If Speaking, pull to activeChord shapes
+            if(window.activeChord && window.activeChord.length > 0) {
+                // Determine target point based on index
+                let targetIdx = Math.floor((i / numPoints) * window.activeChord.length);
+                let tPt = window.activeChord[targetIdx];
+                // Map 0..1 to Screen Space approx
+                let tx = (tPt.x - 0.5) * scale * 2.5;
+                let ty = (tPt.y - 0.5) * scale * 2.5;
+                
+                // Strong Pull
+                p.vx += (tx - p.x) * 0.1;
+                p.vy += (ty - p.y) * 0.1;
+                p.vz += (0 - p.z) * 0.1; // Flatten z
+                
+                // Dampen velocity for cleaner shapes
+                p.vx *= 0.85; p.vy *= 0.85; p.vz *= 0.85;
+            } 
+            // If Feeding, swarm food
+            else if(window.feedingActive && foodParticles.length > 0 && i % 3 === 0) {
+                 // Some particles break formation to eat
+                 let nearest = foodParticles[0];
+                 // (Simple check for first particle for chaos factor)
+                 let tx = nearest.x - (width/2); // Local space
+                 let ty = nearest.y - (height*0.35);
+                 p.vx += (tx - p.x) * 0.04;
+                 p.vy += (ty - p.y) * 0.04;
+            }
+
+            // Damping / Friction
+            p.vx *= 0.94; p.vy *= 0.94; p.vz *= 0.94;
+            
+            // Move
+            p.x += p.vx; p.y += p.vy; p.z += p.vz;
+        }
+    }
+
+    function project(p,cx,cy) {
+        const fov=400;
         let x = p.x, y = p.y, z = p.z;
         if(window.glitchMode) { x += (Math.random()-0.5)*10; y += (Math.random()-0.5)*10; }
-        
-        const x1 = x*Math.cos(rotationY) - z*Math.sin(rotationY);
-        const z1 = z*Math.cos(rotationY) + x*Math.sin(rotationY);
-        const y2 = y*Math.cos(rotationX) - z1*Math.sin(rotationX);
-        const z2 = z1*Math.cos(rotationX) + y*Math.sin(rotationX);
-        
-        const scale = fov / (fov + z2 + 400); 
-        return { x: cx + x1*scale, y: cy + y2*scale, z: z2, scale: scale };
+        const x1=x*Math.cos(rotationY)-z*Math.sin(rotationY), z1=z*Math.cos(rotationY)+x*Math.sin(rotationY);
+        const y2=y*Math.cos(rotationX)-z1*Math.sin(rotationX), z2=z1*Math.cos(rotationX)+y*Math.sin(rotationX);
+        const scale=fov/(fov+z2+400); return {x:cx+x1*scale, y:cy+y2*scale, z:z2, type: p.type};
+    }
+
+    // 4. ADAPTED PHYSICS (Mouse Interaction)
+    function applyInteraction(p, forces) {
+        let r = 220;
+        forces.forEach(f => {
+            const dx=p.x-f.x, dy=p.y-f.y, dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist<r) {
+                // Original repulsion logic, applied to velocity
+                const push=((r-dist)/r)**2 * (5.0 * window.currentIntensity);
+                const a=Math.atan2(dy,dx); 
+                p.vx += Math.cos(a)*push * 0.5; // Mild push to boid
+                p.vy += Math.sin(a)*push * 0.5;
+            }
+        });
     }
 
     let time=0;
     function animate() {
-        // A. Visual Cleanup
         if(window.glitchMode && Math.random() > 0.7) {
             ctx.fillStyle = `rgba(${Math.random()*50}, 0, 0, 0.1)`;
             ctx.fillRect(0,0,width,height);
             ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10);
-        } else { 
-            ctx.clearRect(0,0,width,height); 
-        }
+        } else { ctx.clearRect(0,0,width,height); }
         
         ctx.setTransform(1,0,0,1,0,0);
-        // CRITICAL: This gives the shiny, energy-beam look
-        ctx.globalCompositeOperation = 'lighter'; 
+        ctx.globalCompositeOperation='lighter'; // PRESERVED: This is key to the original look
         
         updateColorLogic();
-        const cx = width/2, cy = height * 0.35;
-        
-        rotationY += 0.002; 
-        rotationX = Math.sin(time*0.5)*0.2; 
-        time += 0.01;
+        const cx=width/2, cy=height * 0.35;
+        rotationY+=0.002; rotationX=Math.sin(time*0.5)*0.2; time+=0.01;
         
         pulseTime += 0.02; 
         let pulseRadius = (pulseTime * 50) % 600; 
-        if(digestionGlow > 0) { digestionGlow *= 0.92; if(digestionGlow<0.01) digestionGlow=0; }
 
-        // B. Update Boids
-        boids.forEach(b => {
-            b.flock(boids, realMouse);
-            b.update();
+        // Update Physics
+        updateFlocking(time);
+        
+        // Project Points
+        const proj = particles.map(p => {
+             // 2D projection
+             const pr = project(p,cx,cy);
+             // Interaction (Mouse) - mapped roughly to 2D
+             if(realMouse.x > -100) {
+                 const dx = pr.x - realMouse.x;
+                 const dy = pr.y - realMouse.y;
+                 const d = Math.sqrt(dx*dx + dy*dy);
+                 if(d < 150) {
+                      const force = (150-d)/150;
+                      const ang = Math.atan2(dy, dx);
+                      p.vx += Math.cos(ang) * force * 2.0;
+                      p.vy += Math.sin(ang) * force * 2.0;
+                 }
+             }
+             return pr;
         });
 
-        // C. Project to 2D
-        const projected = boids.map(b => project(b.pos, cx, cy));
-
-        // D. Digestion Glow (Background)
         if(digestionGlow > 0) {
             const glowRadius = 50 + (digestionGlow * 100); 
             const grg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
@@ -368,77 +397,67 @@ window.initSymbiosisAnimation = function() {
             ctx.beginPath(); ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2); ctx.fill();
         }
 
-        // E. Draw Connections (The Neural Look)
-        ctx.lineWidth = 1;
-        // Optimization: Don't check every pair, check subsets or use proximity from flock step
-        // But for <200 boids, O(N^2) is acceptable on modern JS engines
-        for(let i=0; i<projected.length; i++) {
-            let p1 = projected[i];
-            // Skip points behind camera or too far away
-            if (p1.z < -300) continue;
-
-            // Draw Node (Dot)
-            const nr = Math.floor(window.curPalette.pri.r);
-            const ng = Math.floor(window.curPalette.pri.g);
-            const nb = Math.floor(window.curPalette.pri.b);
-            const alpha = Math.min(1, Math.max(0.2, p1.scale));
-            
-            // Draw lines to neighbors
-            // We connect to close neighbors to form the mesh
-            for(let j=i+1; j<projected.length; j++) {
-                let p2 = projected[j];
-                const dx = p1.x - p2.x;
-                const dy = p1.y - p2.y;
-                const dist2d = Math.sqrt(dx*dx + dy*dy);
-                
-                // Use CONNECTION_DIST scaled by perspective
-                if (dist2d < CONNECTION_DIST * p1.scale) {
-                     // Pulse Logic from Original
-                    let centerDist = Math.sqrt(Math.pow(p1.x - cx, 2) + Math.pow(p1.y - cy, 2));
-                    let pulseBright = 0;
-                    if (Math.abs(centerDist - pulseRadius) < 50) { 
-                        pulseBright = 0.5 * (1 - (Math.abs(centerDist - pulseRadius)/50)); 
-                    }
-
-                    const lineAlpha = ((1 - dist2d/(CONNECTION_DIST*p1.scale)) * 0.3 + pulseBright) * alpha;
+        // 5. RENDER - Maintaining the "Mesh" look using proximity
+        ctx.lineWidth=1;
+        
+        // Connect nearby points to form the "Murmuration Mesh"
+        for(let i=0; i<proj.length; i++) {
+            let p1 = proj[i];
+            if(p1.z > -200) {
+                // Optimization: Check next few neighbors (since array is random mix, this is random connections)
+                // In a real spatial hash this is faster, but for 180 points, nested loop is fine
+                for(let j=i+1; j<proj.length; j++) {
+                    let p2 = proj[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
                     
-                    const cr = Math.floor(window.curPalette.conn.r);
-                    const cg = Math.floor(window.curPalette.conn.g);
-                    const cb = Math.floor(window.curPalette.conn.b);
-
-                    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${lineAlpha})`;
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.stroke();
+                    // Connection Distance Threshold (Dynamic based on depth)
+                    if(dist < 70) { 
+                        ctx.beginPath(); 
+                        
+                        // PRESERVED: The Pulse Logic
+                        let centerDist = Math.sqrt(Math.pow(p1.x - cx, 2) + Math.pow(p1.y - cy, 2));
+                        let pulseBright = 0;
+                        if (Math.abs(centerDist - pulseRadius) < 50) { pulseBright = 0.5 * (1 - (Math.abs(centerDist - pulseRadius)/50)); }
+                        
+                        const alpha = ((1-dist/70)*0.4 + pulseBright) * 0.8;
+                        
+                        // Use connection color
+                        const r = Math.floor(window.curPalette.conn.r);
+                        const g = Math.floor(window.curPalette.conn.g);
+                        const b = Math.floor(window.curPalette.conn.b);
+                        ctx.strokeStyle=`rgba(${r},${g},${b},${Math.min(1, alpha)})`;
+                        ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                    }
                 }
             }
-            
-            // Draw the point itself (Glowing Orb)
-            ctx.fillStyle = `rgba(${nr},${ng},${nb},${alpha})`;
-            ctx.beginPath();
-            ctx.arc(p1.x, p1.y, 2 * p1.scale, 0, Math.PI*2);
-            ctx.fill();
         }
 
-        // F. Text Labels (Indices)
-        ctx.globalCompositeOperation = 'source-over'; 
-        ctx.font = "11px monospace"; ctx.textAlign = "left";
+        // Draw Nodes (The Particles themselves)
+        proj.forEach(p => {
+             const colObj = p.type === 'public' ? window.curPalette.pri : window.curPalette.sec;
+             const r = Math.floor(colObj.r);
+             const g = Math.floor(colObj.g);
+             const b = Math.floor(colObj.b);
+             ctx.fillStyle = `rgba(${r},${g},${b},0.8)`;
+             ctx.beginPath();
+             ctx.fillRect(p.x, p.y, 2, 2); // Preserved strict pixel aesthetic
+        });
+
+        ctx.globalCompositeOperation='source-over'; ctx.font="11px monospace"; ctx.textAlign="left";
+        
         indicesList.forEach((lbl, i) => {
-            // Attach label to specific boids (stable indices)
-            const idx = Math.floor((i/indicesList.length) * NUM_BOIDS);
-            const p = projected[idx];
-            if(p && p.z > -300) {
+            const p = proj[Math.floor((i/indicesList.length)*numPoints)];
+            if(p && p.z>-300) {
                 const r = Math.floor(window.curPalette.sec.r);
                 const g = Math.floor(window.curPalette.sec.g);
                 const b = Math.floor(window.curPalette.sec.b);
-                ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(1, p.scale)})`;
-                ctx.fillText(lbl, p.x + 10, p.y + 4); 
-                ctx.fillRect(p.x-1, p.y-1, 2, 2);
+                ctx.fillStyle=`rgba(${r},${g},${b},0.8)`;
+                ctx.fillText(lbl, p.x+10, p.y+4); ctx.fillRect(p.x-1,p.y-1,2,2);
             }
         });
 
-        // G. Food Particles
         if(window.feedingActive && foodParticles.length > 0) {
             ctx.font = "bold 20px 'Courier New'";
             ctx.textAlign = "center";
@@ -449,30 +468,24 @@ window.initSymbiosisAnimation = function() {
                 let fp = foodParticles[i];
                 const dx = cx - fp.x; const dy = cy - fp.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                fp.vx += Math.sin(time * 3 + fp.offset) * 0.15; 
-                fp.vy += Math.cos(time * 2 + fp.offset) * 0.15;
-                
-                // Pull into center (The Swarm's "Mouth")
-                let pullStrength = (dist > 300) ? 0.15 : (dist > 150 ? 0.4 : 1.2);
+                fp.vx += Math.sin(time * 3 + fp.offset) * 0.15; fp.vy += Math.cos(time * 2 + fp.offset) * 0.15;
+                let pullStrength = 0;
+                if (dist > 300) pullStrength = 0.15; else if (dist > 150) pullStrength = 0.4; else pullStrength = 1.2;                   
                 fp.vx += (dx / dist) * pullStrength; fp.vy += (dy / dist) * pullStrength;
-                
+                if (dist > 50) { const swirlForce = 0.25; fp.vx += -(dy / dist) * swirlForce * fp.swirlDir; fp.vy += (dx / dist) * swirlForce * fp.swirlDir; }
                 fp.vx *= fp.friction; fp.vy *= fp.friction; fp.x += fp.vx; fp.y += fp.vy;
-                
-                let alpha = 1; 
+                let scale = 1; let alpha = 1; let colorLerp = 0; 
 
-                // Absorb
                 if (dist < absorptionRadius) {
-                    let scale = dist / absorptionRadius; 
-                    alpha = Math.pow(scale, 0.5); 
-                    if (dist < 20 || scale < 0.1) {
+                    scale = dist / absorptionRadius; alpha = Math.pow(scale, 0.5); colorLerp = 1 - scale; 
+                    if (dist < 10 || scale < 0.1) {
                         foodParticles.splice(i, 1); eatenFoodCount++; 
                         digestionGlow = Math.min(digestionGlow + 0.3, 1.5);
                         continue; 
                     }
                 }
-                
-                ctx.save(); ctx.translate(fp.x, fp.y);
+                const drawScale = scale * (1 + Math.sin(time * 15 + fp.offset)*0.15);
+                ctx.save(); ctx.translate(fp.x, fp.y); ctx.scale(drawScale, drawScale);
                 const r = Math.floor(window.curPalette.pri.r);
                 const g = Math.floor(window.curPalette.pri.g);
                 const b = Math.floor(window.curPalette.pri.b);
@@ -481,7 +494,6 @@ window.initSymbiosisAnimation = function() {
                 ctx.fillText(fp.char, 0, 0); ctx.restore();
             }
         }
-        
         requestAnimationFrame(animate);
     }
     animate();
