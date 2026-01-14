@@ -1,13 +1,13 @@
 // ============================================
-// VISUALS MODULE (visuals.js) - ELASTIC SWARM OVERHAUL
+// VISUALS MODULE (visuals.js) - AERODYNAMIC INTERACTION
 // ============================================
 
-let foodParticles = []; 
+let foodParticles = [];
 window.feedingActive = false;
 let eatenFoodCount = 0;
 let totalFoodCount = 0;
 let bloatFactor = 1.0; 
-let pulseTime = 0;     
+let pulseTime = 0;      
 let digestionGlow = 0; 
 
 // Global Access to Palette
@@ -18,63 +18,190 @@ window.updateKeywords = (newList) => {
     if(newList && newList.length > 0) indicesList = newList;
 };
 
-// --- ALPHABET DEFINITIONS (Preserved) ---
-const alphabetChords = {
-    'A': [{x:0.5, y:0.2}, {x:0.2, y:0.8}, {x:0.8, y:0.8}],
-    'E': [{x:0.2, y:0.2}, {x:0.2, y:0.8}, {x:0.8, y:0.2}, {x:0.8, y:0.5}, {x:0.8, y:0.8}],
-    'I': [{x:0.5, y:0.2}, {x:0.5, y:0.8}, {x:0.3, y:0.2}, {x:0.7, y:0.2}, {x:0.3, y:0.8}, {x:0.7, y:0.8}],
-    'O': [{x:0.5, y:0.2}, {x:0.2, y:0.5}, {x:0.5, y:0.8}, {x:0.8, y:0.5}],
-    'U': [{x:0.2, y:0.2}, {x:0.2, y:0.8}, {x:0.5, y:0.9}, {x:0.8, y:0.8}, {x:0.8, y:0.2}],
-    'B': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.5,y:0.35},{x:0.5,y:0.65},{x:0.8,y:0.2},{x:0.8,y:0.8}],
-    'C': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.8}],
-    'D': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.5}],
-    'F': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.6,y:0.5}],
-    'G': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.8},{x:0.8,y:0.5},{x:0.6,y:0.5}],
-    'H': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.5}],
-    'J': [{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.9},{x:0.2,y:0.8}],
-    'K': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.2},{x:0.8,y:0.8},{x:0.2,y:0.5}],
-    'L': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.8}],
-    'M': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.5,y:0.5},{x:0.8,y:0.2},{x:0.8,y:0.8}],
-    'N': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.8},{x:0.8,y:0.2}],
-    'P': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5}],
-    'Q': [{x:0.5,y:0.2},{x:0.2,y:0.5},{x:0.5,y:0.8},{x:0.8,y:0.5},{x:0.8,y:0.8}],
-    'R': [{x:0.2,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5},{x:0.8,y:0.8}],
-    'S': [{x:0.8,y:0.2},{x:0.2,y:0.25},{x:0.8,y:0.75},{x:0.2,y:0.8}],
-    'T': [{x:0.5,y:0.2},{x:0.5,y:0.8},{x:0.2,y:0.2},{x:0.8,y:0.2}],
-    'V': [{x:0.2,y:0.2},{x:0.5,y:0.8},{x:0.8,y:0.2}],
-    'W': [{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.5,y:0.5},{x:0.8,y:0.8},{x:0.8,y:0.2}],
-    'X': [{x:0.2,y:0.2},{x:0.8,y:0.8},{x:0.5,y:0.5},{x:0.8,y:0.2},{x:0.2,y:0.8}],
-    'Y': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.5},{x:0.5,y:0.8}],
-    'Z': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.2,y:0.8},{x:0.8,y:0.8}],
-    '0': [{x:0.5,y:0.1},{x:0.1,y:0.5},{x:0.5,y:0.9},{x:0.9,y:0.5},{x:0.5,y:0.5}],
-    '1': [{x:0.5,y:0.1},{x:0.5,y:0.9},{x:0.3,y:0.9},{x:0.7,y:0.9}],
-    '2': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8}],
-    '3': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.5},{x:0.8,y:0.8},{x:0.2,y:0.8}],
-    '4': [{x:0.2,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.2},{x:0.8,y:0.8}],
-    '5': [{x:0.8,y:0.2},{x:0.2,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.8},{x:0.2,y:0.8}],
-    '6': [{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8},{x:0.8,y:0.5}],
-    '7': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.5,y:0.8}],
-    '8': [{x:0.5,y:0.3},{x:0.5,y:0.7},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.2,y:0.5},{x:0.8,y:0.5},{x:0.2,y:0.8},{x:0.8,y:0.8}],
-    '9': [{x:0.5,y:0.5},{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.2,y:0.8}],
-    '.': [{x:0.5,y:0.8},{x:0.5,y:0.9}],
-    ',': [{x:0.5,y:0.8},{x:0.4,y:0.95}],
-    '!': [{x:0.5,y:0.2},{x:0.5,y:0.6},{x:0.5,y:0.9}],
-    '?': [{x:0.2,y:0.2},{x:0.8,y:0.2},{x:0.8,y:0.5},{x:0.5,y:0.6},{x:0.5,y:0.9}],
-    '-': [{x:0.2,y:0.5},{x:0.8,y:0.5}],
-    '_': [{x:0.1,y:0.9},{x:0.9,y:0.9}],
-    ' ': [{x:0.5,y:0.5},{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}],
-    ':': [{x:0.5,y:0.3},{x:0.5,y:0.7}],
-    ';': [{x:0.5,y:0.3},{x:0.5,y:0.7},{x:0.4,y:0.8}],
-    '\'':[{x:0.5,y:0.2},{x:0.5,y:0.3}],
-    '"': [{x:0.4,y:0.2},{x:0.6,y:0.2}],
-    '/': [{x:0.8,y:0.2},{x:0.2,y:0.8}],
-    '\\':[{x:0.2,y:0.2},{x:0.8,y:0.8}],
-    '(': [{x:0.6,y:0.2},{x:0.4,y:0.5},{x:0.6,y:0.8}],
-    ')': [{x:0.4,y:0.2},{x:0.6,y:0.5},{x:0.4,y:0.8}],
-    '@': [{x:0.5,y:0.5},{x:0.8,y:0.5},{x:0.8,y:0.2},{x:0.2,y:0.2},{x:0.2,y:0.8},{x:0.6,y:0.8}],
+// --- PHONETIC ANALYSIS ENGINE ---
+// Maps whole words to "Atmospheric Conditions"
+const WORD_BEHAVIOR = {
+    SHARP: { separation: 18, alignment: 0.1, cohesion: 0.05, speedMod: 1.6, chaos: 2.5 },
+    FLOW:  { separation: 35, alignment: 0.25, cohesion: 0.01, speedMod: 0.8, chaos: 0.1 },
+    NEUTRAL: { separation: 25, alignment: 0.12, cohesion: 0.02, speedMod: 1.0, chaos: 0.5 }
 };
 
-// --- FOOD SYSTEM ---
+let currentAtmosphere = WORD_BEHAVIOR.NEUTRAL;
+let targetAtmosphere = WORD_BEHAVIOR.NEUTRAL;
+let globalTurbulence = { x: 0, y: 0, z: 0 };
+
+// --- BOID LOGIC ---
+const FLOCK_SIZE = 450; 
+const MAX_FLOCK = 700;
+const VISION = 110;       
+const MAX_SPEED = 8.0;    
+const MIN_SPEED = 3.5;    
+
+class Boid {
+    constructor(x, y, z, isNewborn = false) {
+        const angle = Math.random() * Math.PI * 2;
+        const rad = Math.random() * 200;
+        this.pos = { 
+            x: x || Math.cos(angle) * rad, 
+            y: y || Math.sin(angle) * rad, 
+            z: z || (Math.random()-0.5) * 100 
+        };
+        this.vel = { 
+            x: (Math.random()-0.5)*MAX_SPEED, 
+            y: (Math.random()-0.5)*MAX_SPEED, 
+            z: (Math.random()-0.5)*MAX_SPEED 
+        };
+        this.acc = { x: 0, y: 0, z: 0 };
+        this.id = Math.random();
+        this.type = isNewborn ? 'sec' : (Math.random() > 0.6 ? 'pri' : 'sec');
+        this.bornTime = isNewborn ? 1.0 : 0.0;
+        this.panicMode = 0; // Tracks if boid is currently fleeing a predator (mouse)
+    }
+
+    applyForce(fx, fy, fz) {
+        this.acc.x += fx; this.acc.y += fy; this.acc.z += fz;
+    }
+
+    update(boids, mouse, width, height) {
+        let sep = {x:0, y:0, z:0};
+        let ali = {x:0, y:0, z:0};
+        let coh = {x:0, y:0, z:0};
+        let count = 0;
+
+        // Optimization: Spatial Stride
+        const stride = boids.length > 350 ? 2 : 1; 
+
+        for(let i=0; i<boids.length; i+=stride) {
+            let other = boids[i];
+            if(other === this) continue;
+            
+            let dx = this.pos.x - other.pos.x;
+            let dy = this.pos.y - other.pos.y;
+            let dz = this.pos.z - other.pos.z;
+            let dSq = dx*dx + dy*dy + dz*dz;
+
+            if(dSq < VISION*VISION) {
+                ali.x += other.vel.x; ali.y += other.vel.y; ali.z += other.vel.z;
+                coh.x += other.pos.x; coh.y += other.pos.y; coh.z += other.pos.z;
+                
+                if(dSq < currentAtmosphere.separation * currentAtmosphere.separation) {
+                    let d = Math.sqrt(dSq);
+                    let scale = 1.8 / (d || 0.1); 
+                    sep.x += dx * scale; sep.y += dy * scale; sep.z += dz * scale;
+                }
+                count++;
+            }
+        }
+
+        if(count > 0) {
+            coh.x = (coh.x/count) - this.pos.x; coh.y = (coh.y/count) - this.pos.y; coh.z = (coh.z/count) - this.pos.z;
+            ali.x /= count; ali.y /= count; ali.z /= count;
+        }
+
+        // --- FLUID DYNAMICS ---
+        this.applyForce(sep.x * 2.5, sep.y * 2.5, sep.z * 2.5); 
+        this.applyForce(ali.x * currentAtmosphere.alignment, ali.y * currentAtmosphere.alignment, ali.z * currentAtmosphere.alignment); 
+        this.applyForce(coh.x * currentAtmosphere.cohesion, coh.y * currentAtmosphere.cohesion, coh.z * currentAtmosphere.cohesion); 
+
+        // --- INTERACTION: PREDATOR & OBSTACLE ---
+        if(mouse.active) {
+            let dx = this.pos.x - mouse.x;
+            let dy = this.pos.y - mouse.y;
+            let distSq = dx*dx + dy*dy;
+            
+            // Check Mouse Velocity (Shockwave calculation)
+            let mouseSpeed = Math.sqrt(mouse.vx*mouse.vx + mouse.vy*mouse.vy);
+            let perceptionRadius = 250 + (mouseSpeed * 5); // Vision expands when threat is fast
+            
+            if(distSq < perceptionRadius * perceptionRadius) {
+                let dist = Math.sqrt(distSq);
+                
+                if(mouseSpeed > 8) {
+                    // --- HIGH SPEED: PREDATOR RESPONSE (SCATTER) ---
+                    // Birds don't just fly away; they scatter perpendicular to the threat or violently outward
+                    let force = (perceptionRadius - dist) / perceptionRadius;
+                    
+                    // Violent radial push
+                    this.applyForce(dx * force * 0.8, dy * force * 0.8, 0);
+                    
+                    // Add panic jitter
+                    this.vel.x += (Math.random()-0.5) * 5;
+                    this.vel.y += (Math.random()-0.5) * 5;
+                    this.panicMode = 1.0;
+                } else {
+                    // --- LOW SPEED: HYDRODYNAMIC FLOW (AVOIDANCE) ---
+                    // Gentle push to flow around the cursor
+                    let force = (perceptionRadius - dist) / perceptionRadius;
+                    this.applyForce(dx * force * 0.05, dy * force * 0.05, 0);
+                    
+                    // Slight turbulence in wake
+                    this.applyForce((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, 0);
+                }
+            }
+        }
+
+        // --- GLOBAL TURBULENCE (Voice) ---
+        if(window.activeWordMode) {
+            this.applyForce(globalTurbulence.x, globalTurbulence.y, globalTurbulence.z);
+            if(Math.random() < 0.1) {
+                this.applyForce(
+                    (Math.random()-0.5) * currentAtmosphere.chaos,
+                    (Math.random()-0.5) * currentAtmosphere.chaos,
+                    (Math.random()-0.5) * currentAtmosphere.chaos
+                );
+            }
+        }
+
+        // --- SOFT EDGES ---
+        const dX = -this.pos.x;
+        const dY = -this.pos.y;
+        const dist = Math.sqrt(dX*dX + dY*dY);
+        const limit = width * 0.45;
+        
+        if(dist > limit) {
+            const force = (dist - limit) * 0.0005; 
+            this.applyForce(dX * force, dY * force, 0);
+            this.vel.x *= 0.98; 
+            this.vel.y *= 0.98;
+        }
+
+        // Z-Depth 
+        if(this.pos.z < -200) this.applyForce(0, 0, 0.2); 
+        if(this.pos.z > 200) this.applyForce(0, 0, -0.2); 
+
+        // Physics Integration
+        this.vel.x += this.acc.x; this.vel.y += this.acc.y; this.vel.z += this.acc.z;
+        
+        // Drag
+        let speed = Math.sqrt(this.vel.x**2 + this.vel.y**2 + this.vel.z**2);
+        let drag = speed * 0.01; 
+        this.vel.x *= (1 - drag); this.vel.y *= (1 - drag); this.vel.z *= (1 - drag);
+
+        // Clamp
+        let limitSpeed = MAX_SPEED * currentAtmosphere.speedMod;
+        
+        // If panicking, allow speed burst
+        if (this.panicMode > 0) {
+            limitSpeed *= 1.5;
+            this.panicMode -= 0.05;
+        }
+
+        if(speed > limitSpeed) {
+            let s = limitSpeed/speed;
+            this.vel.x *= s; this.vel.y *= s; this.vel.z *= s;
+        } else if (speed < MIN_SPEED && speed > 0.1) {
+            let s = MIN_SPEED/speed;
+            this.vel.x *= s; this.vel.y *= s; this.vel.z *= s;
+        }
+
+        this.pos.x += this.vel.x; this.pos.y += this.vel.y; this.pos.z += this.vel.z;
+        this.acc = {x:0, y:0, z:0}; 
+        
+        if(this.bornTime > 0) this.bornTime -= 0.02; 
+    }
+}
+
+// --- TEXT SPAWNING ---
 window.spawnFoodText = (text) => {
     foodParticles = [];
     eatenFoodCount = 0;
@@ -82,39 +209,36 @@ window.spawnFoodText = (text) => {
     totalFoodCount = chars.length;
     window.feedingActive = true;
     
-    // Bloat organism based on text length
-    if(text.length > 5) {
-        bloatFactor = 1.0 + (Math.min(text.length, 50) * 0.008);
-    }
+    if(text.length > 5) bloatFactor = 1.0 + (Math.min(text.length, 50) * 0.005);
 
     const canvas = document.getElementById('symbiosisCanvas');
     const width = canvas.width;
     const height = canvas.height;
-
-    // Start lower for "Rising" effect
-    const startY = height + 100; 
-    const spread = Math.min(width * 0.9, chars.length * 40); 
-    const startX = (width - spread) / 2;
+    
+    const startY = height * 0.5 + 100; 
+    const spread = Math.min(width * 0.8, chars.length * 50); 
+    const startX = -spread / 2; 
 
     chars.forEach((char, i) => {
         foodParticles.push({
             char: char,
-            x: startX + (i * (spread / chars.length)) + (Math.random()-0.5)*50, 
-            y: startY + (Math.random() * 150),
-            vx: (Math.random() - 0.5) * 2,  
-            vy: -5 - Math.random() * 5, // Fast upward velocity
-            drag: 0.98,
-            swirlPhase: Math.random() * Math.PI * 2
+            x: startX + (i * (spread / chars.length)) + (Math.random()-0.5)*40, 
+            y: startY + (Math.random() * 100),
+            vx: (Math.random() - 0.5) * 1.5,  
+            vy: -2 - Math.random() * 2, 
+            offset: Math.random() * 100,
+            active: true
         });
     });
 };
 
-// --- AUDIO/SPEAKING TRIGGER ---
+// --- AUDIO BRIDGE (THE AVIAN TRANSLATOR) ---
+window.activeWordMode = false;
+
 window.speak = function(text) {
     window.feedingActive = false; eatenFoodCount = 0; totalFoodCount = 0;
     window.initAudio(); window.startBreathStream();
     
-    // UI SUBTITLES
     const subtitleMask = document.getElementById('subtitle-mask');
     const subtitleTrack = document.getElementById('subtitle-track');
     subtitleTrack.innerHTML = ''; subtitleMask.style.opacity = '1';
@@ -133,48 +257,64 @@ window.speak = function(text) {
 
     function playNextWord() {
         if(wordIndex >= words.length) {
-            window.activeChord=[]; window.stopBreathStream(); 
+            window.activeWordMode = false;
+            targetAtmosphere = WORD_BEHAVIOR.NEUTRAL;
+            window.stopBreathStream(); 
             setTimeout(() => { subtitleMask.style.opacity='0'; setTimeout(()=>subtitleTrack.innerHTML='', 1000); }, 100); 
             return;
         }
+        
         if(wordIndex > 0) spans[wordIndex-1].classList.remove('active');
         spans[wordIndex].classList.add('active');
         
-        // Subtitle Scroll
         const spanCenter = spans[wordIndex].offsetLeft + (spans[wordIndex].offsetWidth / 2);
         subtitleTrack.style.transform = `translateX(${-spanCenter}px)`;
         
-        const chars = words[wordIndex].split('');
-        let charIndex = 0;
+        // --- WORD ANALYSIS (BIOMIMICRY) ---
+        const currentWord = words[wordIndex].toUpperCase();
+        window.activeWordMode = true;
+
+        let sharpCount = (currentWord.match(/[KTPXZGQ]/g) || []).length;
+        let softCount = (currentWord.match(/[LMNRWVYAEIOU]/g) || []).length;
         
-        function playNextChar() {
-            if (charIndex >= chars.length) { wordIndex++; setTimeout(playNextWord, 150 * speedMod); return; }
-            const char = chars[charIndex].toUpperCase();
-            
-            // TRIGGERS VISUAL SHAPE
-            window.activeChord = alphabetChords[char] || [{x:0.5, y:0.5}];
-            
-            // TRIGGERS AUDIO FORMANT
-            window.morphMouthShape(char);
-            window.currentIntensity = 1.5; setTimeout(() => { window.currentIntensity = 1.0; }, 50);
-            
-            charIndex++; 
-            setTimeout(playNextChar, 80 * speedMod);
+        if(sharpCount > softCount || currentWord.length < 4) {
+            targetAtmosphere = WORD_BEHAVIOR.SHARP;
+            let angle = Math.random() * Math.PI * 2;
+            globalTurbulence = { 
+                x: Math.cos(angle) * 2.0, 
+                y: Math.sin(angle) * 2.0, 
+                z: (Math.random()-0.5) * 1.5 
+            };
+            window.morphMouthShape('I'); 
+        } else {
+            targetAtmosphere = WORD_BEHAVIOR.FLOW;
+            globalTurbulence = { x: 0, y: 0, z: 0 }; 
+            window.morphMouthShape('O'); 
         }
-        playNextChar();
+
+        window.currentIntensity = 1.5 + (sharpCount * 0.2); 
+        setTimeout(() => { window.currentIntensity = 1.0; }, 100);
+
+        wordIndex++;
+        let duration = Math.max(250, currentWord.length * 80) * speedMod;
+        setTimeout(playNextWord, duration);
     }
+    
     playNextWord();
 };
 
-// --- ANIMATION ENGINE ---
+// --- MAIN ANIMATION ---
 window.initSymbiosisAnimation = function() {
     const canvas = document.getElementById('symbiosisCanvas');
     const container = document.getElementById('symbiosis-container');
-    
     if (!canvas || !container) return;
     const ctx = canvas.getContext('2d');
     let width, height;
-    
+
+    // FLOCK INIT
+    const boids = [];
+    for(let i=0; i<FLOCK_SIZE; i++) boids.push(new Boid());
+
     function resize() {
         const rect = container.getBoundingClientRect();
         width = rect.width; height = rect.height;
@@ -182,326 +322,234 @@ window.initSymbiosisAnimation = function() {
     }
     window.addEventListener('resize', resize); resize();
 
-    // --- PARTICLE CLASS ---
-    class Particle {
-        constructor(type) {
-            // Random start pos
-            this.x = (Math.random()-0.5) * 300;
-            this.y = (Math.random()-0.5) * 300;
-            this.z = (Math.random()-0.5) * 300;
-            
-            // "Anchor" position (The Sphere Shape)
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos((Math.random() * 2) - 1);
-            const r = 180 + Math.random() * 40;
-            this.anchorX = r * Math.sin(phi) * Math.cos(theta);
-            this.anchorY = r * Math.sin(phi) * Math.sin(theta);
-            this.anchorZ = r * Math.cos(phi);
-            
-            this.vx = 0; this.vy = 0; this.vz = 0;
-            this.type = type; // 'pri' or 'sec' for coloring
-        }
-    }
-
-    const numPoints = 180;
-    const particles = [];
-    for(let i=0; i<numPoints; i++) particles.push(new Particle(i%2===0 ? 'pri' : 'sec'));
-
-    let rotationX=0, rotationY=0;
-    let time = 0;
-    let realMouse = { x: -1000, y: -1000, active: false };
-
-    // MOUSE TRACKING
-    function handleMouse(cx, cy) {
-        const rect = canvas.getBoundingClientRect();
-        realMouse.x = cx - rect.left - (width/2);
-        realMouse.y = cy - rect.top - (height*0.35);
-        realMouse.active = true;
-    }
-    container.addEventListener('mousemove', e => handleMouse(e.clientX, e.clientY));
-    container.addEventListener('touchmove', e => handleMouse(e.touches[0].clientX, e.touches[0].clientY));
-    container.addEventListener('touchend', () => { realMouse.active = false; realMouse.x = -1000; });
-
-    // COLOR LERPING
     function lerpRGB(curr, target, factor) {
         curr.r += (target.r - curr.r) * factor;
         curr.g += (target.g - curr.g) * factor;
         curr.b += (target.b - curr.b) * factor;
     }
 
-    function updatePhysics() {
-        const breath = 1 + Math.sin(time * 2.5) * 0.08;
-        const scale = 0.8 * breath * bloatFactor;
-        
-        // Gradually return bloom to normal
-        if(bloatFactor > 1.0) bloatFactor -= 0.002;
-        if(digestionGlow > 0) digestionGlow *= 0.94;
-
-        // Mouse Repulsion Calculations (Pre-calc for performance)
-        let mouseVec = {x:0, y:0};
-        let mouseActive = false;
-        if (realMouse.active && realMouse.x > -900) {
-            mouseActive = true;
-        }
-
-        particles.forEach((p, i) => {
-            // 1. ANCHOR FORCE (The Form)
-            // Default target is the sphere anchor
-            let tx = p.anchorX * scale;
-            let ty = p.anchorY * scale;
-            let tz = p.anchorZ * scale;
-            let strength = 0.02; // Elasticity
-
-            // 2. SPEAKING OVERRIDE (Shape Shifting)
-            if(window.activeChord && window.activeChord.length > 0) {
-                // Determine which point of the letter this particle maps to
-                const chordIdx = i % window.activeChord.length;
-                const pt = window.activeChord[chordIdx];
-                
-                // Map 0..1 to Screen dimensions approx
-                // We add Z-depth noise so it's a 3D cloud, not a flat 2D drawing
-                tx = (pt.x - 0.5) * 350 * scale;
-                ty = (pt.y - 0.5) * 350 * scale;
-                tz = (Math.sin(i * 132.1) * 50); // Z-noise
-                
-                strength = 0.08; // Stronger pull when speaking
-            }
-            // 3. FEEDING OVERRIDE (Diving)
-            else if(window.feedingActive && foodParticles.length > 0) {
-                 // The swarm dives towards the average food position
-                 // But we add noise so they don't all look identical
-                 let foodTarget = foodParticles[0]; // Chase the leading food
-                 if(foodTarget) {
-                     let fx = foodTarget.x - (width/2);
-                     let fy = foodTarget.y - (height*0.35);
-                     
-                     // If particle is close to food, orbit it
-                     if(Math.abs(p.y - fy) < 100) {
-                        tx = fx + Math.sin(time*5 + i)*50;
-                        ty = fy + Math.cos(time*5 + i)*50;
-                        strength = 0.05;
-                     } else {
-                         // Otherwise anchor drifts down
-                         ty += 100;
-                     }
-                 }
-            }
-
-            // Spring Physics
-            const ax = (tx - p.x) * strength;
-            const ay = (ty - p.y) * strength;
-            const az = (tz - p.z) * strength;
-
-            p.vx += ax; p.vy += ay; p.vz += az;
-
-            // 4. FLOCKING (Separation / Noise)
-            // Cheap "nearby" check using index proximity (since array is randomized)
-            // This gives 'organic' turbulence without O(N^2) cost
-            let noise = Math.sin(time * 3 + i * 0.1) * 0.5;
-            p.vx += noise; 
-            p.vy += Math.cos(time * 2 + i)*0.5;
-
-            // 5. MOUSE INTERACTION (Repulsion)
-            if(mouseActive) {
-                // Approximate 3D mouse pos by assuming mouse is at z=0 plane projected
-                // Simple 2D distance check on the x/y plane relative to center
-                let dx = p.x - realMouse.x;
-                let dy = p.y - realMouse.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if(dist < 180) {
-                    let force = (180 - dist) / 180;
-                    let angle = Math.atan2(dy, dx);
-                    // Violent push
-                    p.vx += Math.cos(angle) * force * 15; 
-                    p.vy += Math.sin(angle) * force * 15;
-                    p.vz += force * 10; // Push back in Z too
-                }
-            }
-
-            // Damping (Friction)
-            p.vx *= 0.92; p.vy *= 0.92; p.vz *= 0.92;
-
-            // Update Position
-            p.x += p.vx; p.y += p.vy; p.z += p.vz;
-        });
+    function lerp(start, end, amt) {
+        return (1-amt)*start + amt*end;
     }
 
-    function project(p, cx, cy) {
-        const fov = 450;
-        // Rotation
-        let x = p.x, y = p.y, z = p.z;
+    let rotationX=0, rotationY=0;
+    let time = 0;
+    // Enhanced Mouse Object
+    let realMouse = { 
+        x: -1000, 
+        y: -1000, 
+        active: false,
+        vx: 0,
+        vy: 0,
+        lastX: -1000,
+        lastY: -1000
+    };
+
+    function handleMouse(cx, cy) {
+        const r = container.getBoundingClientRect();
+        let newX = (cx - r.left) - (width/2);
+        let newY = (cy - r.top) - (height*0.35);
         
-        // Glitch jitter
-        if(window.glitchMode) { 
-            x += (Math.random()-0.5)*15; 
-            y += (Math.random()-0.5)*15; 
+        // Calculate Velocity
+        if(realMouse.active) {
+            realMouse.vx = newX - realMouse.lastX;
+            realMouse.vy = newY - realMouse.lastY;
         }
+        
+        realMouse.x = newX;
+        realMouse.y = newY;
+        realMouse.lastX = newX;
+        realMouse.lastY = newY;
+        realMouse.active = true;
+    }
 
-        const x1 = x*Math.cos(rotationY) - z*Math.sin(rotationY);
-        const z1 = z*Math.cos(rotationY) + x*Math.sin(rotationY);
-        const y2 = y*Math.cos(rotationX) - z1*Math.sin(rotationX);
-        const z2 = z1*Math.cos(rotationX) + y*Math.sin(rotationX);
+    // Touch Handling (Multi-touch awareness optional, usually primary is enough)
+    container.addEventListener('mousemove', e => handleMouse(e.clientX, e.clientY));
+    container.addEventListener('touchmove', e => {
+        e.preventDefault(); // Stop scrolling
+        handleMouse(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive: false});
+    
+    container.addEventListener('touchend', () => { 
+        realMouse.active = false; 
+        realMouse.x=-1000; 
+        realMouse.vx=0; 
+        realMouse.vy=0; 
+    });
 
-        const scale = fov / (fov + z2 + 450);
-        return {
-            x: cx + x1 * scale,
-            y: cy + y2 * scale,
-            z: z2,
-            scale: scale,
-            type: p.type
-        };
+    // Reset Velocity if mouse stops moving but is still present
+    setInterval(() => {
+        if(realMouse.active) {
+            realMouse.vx *= 0.1;
+            realMouse.vy *= 0.1;
+        }
+    }, 100);
+
+
+    // PROJECTION 
+    function project(b, cx, cy) {
+        const fov = 550; 
+        let x = b.pos.x, y = b.pos.y, z = b.pos.z;
+        if(window.glitchMode) { x+=(Math.random()-0.5)*15; y+=(Math.random()-0.5)*15; }
+        
+        const x1=x*Math.cos(rotationY)-z*Math.sin(rotationY);
+        const z1=z*Math.cos(rotationY)+x*Math.sin(rotationY);
+        const y2=y*Math.cos(rotationX)-z1*Math.sin(rotationX);
+        const z2=z1*Math.cos(rotationX)+y*Math.sin(rotationX);
+        
+        const scale = fov / (fov + z2 + 500);
+        return { x: cx + x1*scale, y: cy + y2*scale, z: z2, scale: scale, boid: b };
     }
 
     function animate() {
-        // Clear
-        if(window.glitchMode && Math.random()>0.8) {
-            ctx.fillStyle = 'rgba(50,0,0,0.1)'; ctx.fillRect(0,0,width,height);
+        // A. TRAILS 
+        if(window.glitchMode && Math.random() > 0.8) {
+            ctx.fillStyle = `rgba(50, 0, 0, 0.2)`; ctx.fillRect(0,0,width,height);
         } else {
-            ctx.clearRect(0,0,width,height);
+            ctx.fillStyle = 'rgba(5, 5, 8, 0.25)'; 
+            ctx.fillRect(0,0,width,height);
         }
 
-        // Color Handling
+        ctx.globalCompositeOperation = 'lighter';
+
+        // B. STATE INTERPOLATION
+        currentAtmosphere.separation = lerp(currentAtmosphere.separation, targetAtmosphere.separation, 0.05);
+        currentAtmosphere.alignment = lerp(currentAtmosphere.alignment, targetAtmosphere.alignment, 0.05);
+        currentAtmosphere.speedMod = lerp(currentAtmosphere.speedMod, targetAtmosphere.speedMod, 0.05);
+        currentAtmosphere.chaos = lerp(currentAtmosphere.chaos, targetAtmosphere.chaos, 0.05);
+
+        // Palette
         let targetSet = window.PALETTES[window.currentMood] || window.PALETTES["NEUTRAL"];
-        if(window.glitchMode) targetSet = { pri:{r:255,g:255,b:255}, sec:{r:255,g:0,b:0}, conn:{r:100,g:0,b:0} };
-        
+        if (window.glitchMode) targetSet = { pri:{r:255,g:255,b:255}, sec:{r:255,g:0,b:0}, conn:{r:100,g:0,b:0} };
         lerpRGB(window.curPalette.pri, targetSet.pri, 0.05);
         lerpRGB(window.curPalette.sec, targetSet.sec, 0.05);
         lerpRGB(window.curPalette.conn, targetSet.conn, 0.05);
 
-        // Global transform
-        const cx = width / 2;
-        const cy = height * 0.35;
+        const cx = width/2;
+        const cy = height*0.35;
+        time += 0.01; 
         
-        rotationY += 0.003; 
-        rotationX = Math.sin(time * 0.5) * 0.15;
-        time += 0.015;
+        rotationY = Math.sin(time*0.1) * 0.15; 
+        rotationX = Math.sin(time*0.15)*0.1;
+        
         pulseTime += 0.02;
+        if(digestionGlow > 0) digestionGlow *= 0.94;
 
-        updatePhysics();
+        // C. PHYSICS
+        boids.forEach(b => b.update(boids, realMouse, width, height));
+
+        // D. TEXT INGESTION
+        if(window.feedingActive && foodParticles.length > 0) {
+             for(let i=foodParticles.length-1; i>=0; i--) {
+                 let fp = foodParticles[i];
+                 fp.y += fp.vy;
+                 fp.x += fp.vx + Math.sin(time*3 + fp.offset)*1.0; 
+                 
+                 if(Math.abs(fp.y) < 150 && Math.abs(fp.x) < 300) {
+                     if(boids.length < MAX_FLOCK) {
+                         let newB = new Boid(fp.x, fp.y, 0, true);
+                         newB.vel.y = -2; 
+                         boids.push(newB);
+                     }
+                     digestionGlow += 0.1;
+                     eatenFoodCount++;
+                     foodParticles.splice(i, 1);
+                 } else if (fp.y < -height*0.6) {
+                     foodParticles.splice(i, 1);
+                 }
+             }
+        }
+
+        // E. RENDER
+        const proj = boids.map(b => project(b, cx, cy));
+
+        ctx.lineWidth = 0.8;
         
-        // Project all points
-        const projPoints = particles.map(p => project(p, cx, cy));
-
-        // RENDER: LINES (The Web)
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.lineWidth = 1.2;
-
-        const pulseRadius = (pulseTime * 60) % 600;
-
-        // Optimization: Only connect if close in array (Spatial Hashing alternative)
-        // Since array is random, index proximity != spatial proximity, 
-        // BUT it creates a "chaotic web" which looks cool.
-        // Let's do a semi-brute force on a subset to get better lines.
-        
-        for(let i=0; i<projPoints.length; i++) {
-            let p1 = projPoints[i];
-            if(p1.scale < 0) continue; // Behind camera clipping
-
-            // Draw Node
-            let cObj = p1.type === 'pri' ? window.curPalette.pri : window.curPalette.sec;
-            let alpha = Math.min(1, p1.scale * 0.8);
-            ctx.fillStyle = `rgba(${Math.floor(cObj.r)},${Math.floor(cObj.g)},${Math.floor(cObj.b)},${alpha})`;
-            ctx.beginPath(); 
-            ctx.arc(p1.x, p1.y, 2.5 * p1.scale, 0, Math.PI*2); 
-            ctx.fill();
-
-            // Draw Connections
-            // Check nearest 15 neighbors in array for efficiency + randomness
-            for(let j=1; j<=15; j++) {
-                let p2 = projPoints[(i+j) % projPoints.length];
-                
-                let dx = p1.x - p2.x;
+        // Connections
+        for(let i=0; i<proj.length; i++) {
+            let p1 = proj[i];
+            if(p1.scale < 0) continue;
+            
+            for(let j=1; j<5; j++) {
+                let p2 = proj[(i+j*3)%proj.length]; // Stride
+                let dx = p1.x - p2.x; 
                 let dy = p1.y - p2.y;
-                let distSq = dx*dx + dy*dy;
-                let maxDist = 80 * p1.scale;
+                let d = Math.sqrt(dx*dx + dy*dy);
+                let maxD = 60 * p1.scale;
 
-                if(distSq < maxDist*maxDist) {
-                    // Pulse Math
-                    let centerDist = Math.sqrt(Math.pow(p1.x - cx, 2) + Math.pow(p1.y - cy, 2));
-                    let ripple = 0;
-                    if (Math.abs(centerDist - pulseRadius) < 40) { 
-                        ripple = 0.6 * (1 - (Math.abs(centerDist - pulseRadius)/40)); 
-                    }
-
-                    let lineAlpha = (1 - (Math.sqrt(distSq)/maxDist)) * 0.3 + ripple;
-                    let lc = window.curPalette.conn;
+                if(d < maxD) {
+                    let alpha = (1 - d/maxD) * 0.3 * p1.scale;
                     
-                    ctx.strokeStyle = `rgba(${Math.floor(lc.r)},${Math.floor(lc.g)},${Math.floor(lc.b)},${lineAlpha})`;
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.stroke();
+                    if (window.activeWordMode && currentAtmosphere.chaos > 1.0) {
+                        alpha = 0.6 * p1.scale;
+                    }
+                    // Panic creates brighter connections
+                    if (p1.boid.panicMode > 0) alpha += 0.3;
+
+                    let c = window.curPalette.conn;
+                    ctx.strokeStyle = `rgba(${Math.floor(c.r)},${Math.floor(c.g)},${Math.floor(c.b)},${alpha})`;
+                    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
                 }
             }
+
+            // Dot
+            let cObj = p1.boid.type === 'pri' ? window.curPalette.pri : window.curPalette.sec;
+            let alpha = Math.min(1, p1.scale * 1.2);
+            let rad = (p1.boid.type === 'pri' ? 2 : 1.2) * p1.scale;
+
+            if(p1.boid.bornTime > 0) { 
+                cObj = {r:255, g:255, b:255}; 
+                alpha = 1; 
+                rad *= 2;
+            }
+            // Flash if panicking
+            if(p1.boid.panicMode > 0) {
+                 cObj = {r:255, g:100, b:100}; 
+                 rad *= 1.2;
+            }
+            
+            ctx.fillStyle = `rgba(${Math.floor(cObj.r)},${Math.floor(cObj.g)},${Math.floor(cObj.b)},${alpha})`;
+            ctx.beginPath(); ctx.arc(p1.x, p1.y, rad, 0, Math.PI*2); ctx.fill();
         }
 
-        // BACKGROUND GLOW (Digestion)
-        if(digestionGlow > 0.01) {
-            const glowR = 100 + (digestionGlow * 150);
-            const grg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-            const gc = window.curPalette.pri;
-            grg.addColorStop(0, `rgba(${gc.r},${gc.g},${gc.b},${digestionGlow * 0.3})`);
-            grg.addColorStop(1, `rgba(${gc.r},${gc.g},${gc.b},0)`);
+        // Glow
+        if(digestionGlow > 0.05) {
+            let r = 100 + digestionGlow*150;
+            let grg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+            let c = window.curPalette.pri;
+            grg.addColorStop(0, `rgba(${Math.floor(c.r)},${Math.floor(c.g)},${Math.floor(c.b)},${digestionGlow*0.3})`);
+            grg.addColorStop(1, "transparent");
             ctx.fillStyle = grg;
-            ctx.globalCompositeOperation = 'screen'; // Softer glow
-            ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI*2); ctx.fill();
-            ctx.globalCompositeOperation = 'lighter'; // Switch back
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
         }
 
-        // UI LABELS
+        // UI Labels
         ctx.globalCompositeOperation = 'source-over';
         ctx.font = "10px monospace";
         indicesList.forEach((lbl, i) => {
-            // Attach to specific stable particles
-            let idx = Math.floor((i/indicesList.length) * numPoints);
-            let p = projPoints[idx];
-            if(p && p.z > -100) {
-                 ctx.fillStyle = `rgba(255,255,255,${p.scale})`;
-                 ctx.fillText(lbl, p.x + 10, p.y);
-                 // Little line
-                 ctx.strokeStyle = `rgba(255,255,255,0.3)`;
-                 ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x+8, p.y); ctx.stroke();
+            let idx = Math.floor((i/indicesList.length) * proj.length);
+            let p = proj[idx];
+            if(p && p.scale > 0.6) { 
+                let c = window.curPalette.sec;
+                ctx.fillStyle = `rgba(${Math.floor(c.r)},${Math.floor(c.g)},${Math.floor(c.b)},${0.6})`;
+                ctx.fillText(lbl, p.x+10, p.y+4);
             }
         });
 
-        // FOOD PARTICLES
+        // Food Text
         if(window.feedingActive && foodParticles.length > 0) {
             ctx.font = "bold 20px 'Courier New'";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-
-            for (let i = foodParticles.length - 1; i >= 0; i--) {
-                let fp = foodParticles[i];
+            for(let fp of foodParticles) {
+                let x = cx + fp.x;
+                let y = cy + fp.y;
                 
-                // Physics
-                fp.vy += 0.1; // Gravity? No, we want them sucked in.
-                // Pull towards center
-                let dx = cx - fp.x;
-                let dy = cy - fp.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                
-                // Gravity Well Force
-                let force = 500 / (dist + 10); // Stronger as it gets closer
-                fp.vx += (dx/dist) * force * 0.05;
-                fp.vy += (dy/dist) * force * 0.05;
-
-                fp.x += fp.vx;
-                fp.y += fp.vy;
-                
-                // Check Collision (Eating)
-                if(dist < 40) {
-                    foodParticles.splice(i, 1);
-                    eatenFoodCount++;
-                    digestionGlow = Math.min(digestionGlow + 0.5, 2.0); // Flash!
-                    continue;
-                }
-
-                // Render
                 ctx.save();
-                ctx.translate(fp.x, fp.y);
+                ctx.translate(x, y);
                 let shimmer = 0.5 + Math.sin(time*20)*0.5;
                 let c = window.curPalette.pri;
-                ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${0.8 + shimmer*0.2})`;
+                ctx.fillStyle = `rgba(${Math.floor(c.r)},${Math.floor(c.g)},${Math.floor(c.b)},${0.8+shimmer*0.2})`;
                 ctx.fillText(fp.char, 0, 0);
                 ctx.restore();
             }
@@ -510,4 +558,4 @@ window.initSymbiosisAnimation = function() {
         requestAnimationFrame(animate);
     }
     animate();
-}
+};
